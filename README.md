@@ -13,17 +13,25 @@ OpenGL ES 2.0 support has not yet been added to the main branch.  Please see the
 
 ## QUICK INSTALL
 
-	git clone git@github.com:cdave1/ftgles.git
+You need a copy of freetype2 for arm.
+
 	git clone git@github.com:cdave1/freetype2-ios.git
 	cd freetype2-ios/
 	bash install.sh
-	cd ../ftgles
-	ln -s ../freetype2-ios freetype2
-	cd Xcode
-	bash install.sh
 
-At this point, it should be possible to compile and run the Xcode projects in your ftgles/Demos/iOS folder.
+Now get ftgles
 
+	git clone git@github.com:rktjmp/ftgles.git
+	cd ftgles/Xcode
+	ln -s /path/to/your/freetype2/dir freetype2
+	open ftgles.xcodeproj
+
+You might have to update the xcode project links to freetype stuff.
+
+- Check `freetype.a` in the project files points to your Freetype 2 arm library.
+- Check that the `FTGLES` project bulid settings `Header search paths` points to your freetype2 source directory. This defaults to `./freetype2/include/**` which hopefully works with the symlink you created before.
+
+You should be able to build `ftgles.a`. Xcode 4 puts build results in a directory separated from the project directory. To get there to `Xcode => Preferences => Locations` and hit the arrow next to your `Derived Data` path.
 
 ## INSTALL
 

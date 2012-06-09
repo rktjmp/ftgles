@@ -50,7 +50,7 @@ class FTSimpleLayoutImpl : public FTLayoutImpl
 protected:
 	FTSimpleLayoutImpl();
 	
-	virtual ~FTSimpleLayoutImpl() {};
+	virtual ~FTSimpleLayoutImpl();
 	
 	virtual FTBBox BBox(const char* string, const int len,
 						FTPoint position);
@@ -211,10 +211,11 @@ private:
 	 */
     std::list<layoutGlyphCacheItem_t> layoutGlyphCache;
 	
-	unsigned int stringCache[4096];
+	unsigned char * stringCache;
 	
 	unsigned int stringCacheCount;
 	
+	void invalidate();
 	
 	/* Internal generic BBox() implementation */
 	template <typename T>

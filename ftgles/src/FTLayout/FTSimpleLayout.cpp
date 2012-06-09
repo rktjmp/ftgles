@@ -81,6 +81,7 @@ void FTSimpleLayout::Render(const wchar_t* string, const int len, FTPoint pos,
 void FTSimpleLayout::SetFont(FTFont *fontInit)
 {
     dynamic_cast<FTSimpleLayoutImpl*>(impl)->currentFont = fontInit;
+    dynamic_cast<FTSimpleLayoutImpl*>(impl)->invalidate();
 }
 
 
@@ -93,6 +94,7 @@ FTFont *FTSimpleLayout::GetFont()
 void FTSimpleLayout::SetLineLength(const float LineLength)
 {
     dynamic_cast<FTSimpleLayoutImpl*>(impl)->lineLength = LineLength;
+    dynamic_cast<FTSimpleLayoutImpl*>(impl)->invalidate();
 }
 
 
@@ -105,6 +107,7 @@ float FTSimpleLayout::GetLineLength() const
 void FTSimpleLayout::SetAlignment(const FTGL::TextAlignment Alignment)
 {
     dynamic_cast<FTSimpleLayoutImpl*>(impl)->alignment = Alignment;
+    dynamic_cast<FTSimpleLayoutImpl*>(impl)->invalidate();
 }
 
 
@@ -117,6 +120,7 @@ FTGL::TextAlignment FTSimpleLayout::GetAlignment() const
 void FTSimpleLayout::SetLineSpacing(const float LineSpacing)
 {
     dynamic_cast<FTSimpleLayoutImpl*>(impl)->lineSpacing = LineSpacing;
+    dynamic_cast<FTSimpleLayoutImpl*>(impl)->invalidate();
 }
 
 
@@ -137,6 +141,20 @@ FTSimpleLayoutImpl::FTSimpleLayoutImpl()
     lineLength = 100.0f;
     alignment = FTGL::ALIGN_LEFT;
     lineSpacing = 1.0f;
+    stringCache = NULL;
+	stringCacheCount = 0;
+}
+
+FTSimpleLayoutImpl::~FTSimpleLayoutImpl()
+{
+	free(stringCache);
+	stringCache = NULL;
+	stringCacheCount = 0;
+}
+
+
+inline void FTSimpleLayoutImpl::invalidate()
+{
 	stringCacheCount = 0;
 }
 
@@ -209,6 +227,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 {
     FTUnicodeStringItr<T> breakItr(buf);          // points to the last break character
     FTUnicodeStringItr<T> lineStart(buf);         // points to the line start
+   unsigned int new_stringCacheCount = 0;        // length of buffer
     float nextStart = 0.0;     // total width of the current line
     float breakWidth = 0.0;    // width of the line up to the last word break
     float currentWidth = 0.0;  // width of all characters on the current line
@@ -229,30 +248,47 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		bounds->Invalidate();
     }
 	
+	{
+		FTUnicodeStringItr<T> itr(buf);
+		for (; *itr; ++itr) {}
+		new_stringCacheCount = itr.getBufferFromHere() - buf + sizeof(T)/*terminator*/;
+	}
+
 	// Check if the incoming string is different to the previously
 	// cached string.
-	unsigned int i = 0;
-	for (FTUnicodeStringItr<T> itr(buf); *itr; itr++)
+	if (stringCache && stringCacheCount == new_stringCacheCount)
 	{
-		if (i >= stringCacheCount ||
-			stringCache[i++] != (unsigned int)*itr)
+		refresh = !!memcmp(stringCache, buf, stringCacheCount);
+	}
+	else
+	{
+		refresh = true;
+		stringCacheCount = new_stringCacheCount;
+		
+		if (!stringCache)
 		{
-			refresh = true;
-			break;
+			stringCache = (unsigned char *)malloc(stringCacheCount);
+		}
+		else
+		{
+			stringCache = (unsigned char *)realloc(stringCache, stringCacheCount);
+		}
+
+		if (!stringCache)
+		{
+			throw std::bad_alloc();
 		}
 	}
 	
 	if (refresh)
 	{
-		stringCacheCount = 0;
+		memcpy(stringCache, buf, stringCacheCount);
         layoutGlyphCache.clear();
 		
 		// Scan the input for all characters that need output
 		FTUnicodeStringItr<T> prevItr(buf);
 		for (FTUnicodeStringItr<T> itr(buf); *itr; prevItr = itr++, charCount++)
 		{
-			stringCache[stringCacheCount++] = (unsigned int)*itr;
-			
 			// Find the width of the current glyph
 			glyphBounds = currentFont->BBox(itr.getBufferFromHere(), 1);
 			glyphWidth = glyphBounds.Upper().Xf() - glyphBounds.Lower().Xf();
@@ -296,7 +332,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 				}
 				
 				layoutGlyphCacheItem_t cacheItem;
-				cacheItem.buf = (T*)lineStart.getBufferFromHere();
+				cacheItem.buf = cacheItem.buf = stringCache + ptrdiff_t(lineStart.getBufferFromHere() - buf);
 				cacheItem.charCount = breakCharCount;
 				cacheItem.position = FTPoint(position.X(), position.Y(), position.Z());
 				cacheItem.remainingWidth = remainingWidth;
@@ -339,7 +375,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		{
 			alignment = FTGL::ALIGN_LEFT;
 			layoutGlyphCacheItem_t cacheItem;
-			cacheItem.buf = (T *)lineStart.getBufferFromHere();
+			cacheItem.buf = stringCache + ptrdiff_t(lineStart.getBufferFromHere() - buf);
 			cacheItem.charCount = -1;
 			cacheItem.position = FTPoint(position.X(), position.Y(), position.Z());
 			cacheItem.penDiff = FTPoint(0,0,0);
@@ -350,7 +386,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		else
 		{
 			layoutGlyphCacheItem_t cacheItem;
-			cacheItem.buf = (T *)lineStart.getBufferFromHere();
+			cacheItem.buf = stringCache + ptrdiff_t(lineStart.getBufferFromHere() - buf);
 			cacheItem.charCount = -1;
 			cacheItem.position = FTPoint(position.X(), position.Y(), position.Z());
 			cacheItem.penDiff = FTPoint(0,0,0);

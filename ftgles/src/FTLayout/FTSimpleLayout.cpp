@@ -360,21 +360,30 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 	}
 	
 	// Draw each of the glyphs in the cache.
-	currentFont->PreRender();
-    std::list<layoutGlyphCacheItem_t>::iterator it;
-	for (it = layoutGlyphCache.begin(); it != layoutGlyphCache.end(); it++)
-	{
-		layoutGlyphCacheItem_t cacheItem = (*it);
-		
-		OutputWrapped((T*)cacheItem.buf, 
-					  cacheItem.charCount,
-					  cacheItem.position,
-					  renderMode,
-					  cacheItem.remainingWidth,
-					  bounds);
-		pen -= cacheItem.penDiff;
+	if(bounds == NULL)
+	{	
+		// bounds is NULL, so we're actually going to output the text
+		// so do our pre-render setup
+		currentFont->PreRender();
 	}
-	currentFont->PostRender();
+	    std::list<layoutGlyphCacheItem_t>::iterator it;
+		for (it = layoutGlyphCache.begin(); it != layoutGlyphCache.end(); it++)
+		{
+			layoutGlyphCacheItem_t cacheItem = (*it);
+			
+			OutputWrapped((T*)cacheItem.buf, 
+						  cacheItem.charCount,
+						  cacheItem.position,
+						  renderMode,
+						  cacheItem.remainingWidth,
+						  bounds);
+			pen -= cacheItem.penDiff;
+		}
+	if(bounds == NULL)
+	{	
+		// we did output stuff, so do our post-render tear down.
+		currentFont->PostRender();
+	}
 }
 
 

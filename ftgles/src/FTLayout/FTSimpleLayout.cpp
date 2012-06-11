@@ -225,9 +225,16 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
                                           FTPoint position, int renderMode,
                                           FTBBox *bounds)
 {
-    FTUnicodeStringItr<T> breakItr(buf);          // points to the last break character
-    FTUnicodeStringItr<T> lineStart(buf);         // points to the line start
-   unsigned int new_stringCacheCount = 0;        // length of buffer
+	// points to the last break character
+	// A break character is a white space character or a new line
+	// we have to remember this because we don't hyphenate words, so if they
+	// exceed our line length limit, then we must put the whole word on the
+	// next line.
+    FTUnicodeStringItr<T> breakItr(buf); 
+	
+    FTUnicodeStringItr<T> lineStart(buf); // points to the line start
+	
+
     float nextStart = 0.0;     // total width of the current line
     float breakWidth = 0.0;    // width of the line up to the last word break
     float currentWidth = 0.0;  // width of all characters on the current line
@@ -237,7 +244,8 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
     int breakCharCount = 0;    // number of characters before the breakItr
     float glyphWidth, advance;
     FTBBox glyphBounds;
-	bool refresh = false;
+	bool refreshCache = false;
+	unsigned int new_stringCacheCount = 0; // length of buffer
 	
     // Reset the pen position
     pen.Y(0);
@@ -249,6 +257,8 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
     }
 	
 	{
+		// Count up length of our given string, so we can compare with our 
+		// cached string length.
 		FTUnicodeStringItr<T> itr(buf);
 		for (; *itr; ++itr) {}
 		new_stringCacheCount = itr.getBufferFromHere() - buf + sizeof(T)/*terminator*/;
@@ -258,11 +268,18 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 	// cached string.
 	if (stringCache && stringCacheCount == new_stringCacheCount)
 	{
-		refresh = !!memcmp(stringCache, buf, stringCacheCount);
+		// cache length and new string length is the same, but check
+		// if the value is different and the length just happened to be
+		// the same.
+		// TODO FIXME: Can't we just do this straight out? If we're going to be
+		// doing it anyway... Also why the !!... Probably clearer to write != 0?
+		refreshCache = !!memcmp(stringCache, buf, stringCacheCount);
 	}
 	else
 	{
-		refresh = true;
+		// cache length and new string length were different, so we have to 
+		// recreate our cache.
+		refreshCache = true;
 		stringCacheCount = new_stringCacheCount;
 		
 		if (!stringCache)
@@ -280,8 +297,10 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		}
 	}
 	
-	if (refresh)
+	// if our string has changed
+	if (refreshCache)
 	{
+		// copy new string to our cache
 		memcpy(stringCache, buf, stringCacheCount);
         layoutGlyphCache.clear();
 		
@@ -289,24 +308,36 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		FTUnicodeStringItr<T> prevItr(buf);
 		for (FTUnicodeStringItr<T> itr(buf); *itr; prevItr = itr++, charCount++)
 		{
-			// Find the width of the current glyph
+			// Find the width of the current glyph (BBox(char *, len))
 			glyphBounds = currentFont->BBox(itr.getBufferFromHere(), 1);
 			glyphWidth = glyphBounds.Upper().Xf() - glyphBounds.Lower().Xf();
 			
+			// advance is the distance from a glyphs origin to where the
+			// next glyph would start, i.e. the total width of the glyph 
+			// (larger than just the visible area)
+			// http://ftgl.sourceforge.net/docs/html/metrics.png
 			advance = currentFont->Advance(itr.getBufferFromHere(), 1);
-			prevWidth = currentWidth;
+			
+			prevWidth = currentWidth; // save the previous total width
+			
 			// Compute the width of all glyphs up to the end of buf[i]
+			// Find the current lines width, including this glyph
 			currentWidth = nextStart + glyphWidth;
+			
 			// Compute the position of the next glyph
 			nextStart += advance;
 			
 			// See if the current character is a space, a break or a regular character
 			if((currentWidth > lineLength) || (*itr == '\n'))
-			{
+			{	
 				// A non whitespace character has exceeded the line length.  Or a
-				// newline character has forced a line break.  Output the last
-				// line and start a new line after the break character.
-				// If we have not yet found a break, break on the last character
+				// newline character has forced a line break.
+				// (Whitespace characters are handled in the else)
+				// Output the last line and start a new line after the break 
+				// character.
+				
+				// If we have not yet found a break, break on the previous character
+				// If current character is a new line, break on the previous character
 				if(breakItr == lineStart || (*itr == '\n'))
 				{
 					// Break on the previous character
@@ -331,8 +362,9 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 					++breakChar; --charCount;
 				}
 				
+				// create 
 				layoutGlyphCacheItem_t cacheItem;
-				cacheItem.buf = cacheItem.buf = stringCache + ptrdiff_t(lineStart.getBufferFromHere() - buf);
+				cacheItem.buf = stringCache + ptrdiff_t(lineStart.getBufferFromHere() - buf);
 				cacheItem.charCount = breakCharCount;
 				cacheItem.position = FTPoint(position.X(), position.Y(), position.Z());
 				cacheItem.remainingWidth = remainingWidth;

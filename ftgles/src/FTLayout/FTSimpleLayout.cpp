@@ -230,7 +230,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 	// we have to remember this because we don't hyphenate words, so if they
 	// exceed our line length limit, then we must put the whole word on the
 	// next line.
-    FTUnicodeStringItr<T> breakItr(buf); 
+    FTUnicodeStringItr<T> breakItr(buf);
 	
     FTUnicodeStringItr<T> lineStart(buf); // points to the line start
 	
@@ -303,6 +303,93 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		// copy new string to our cache
 		memcpy(stringCache, buf, stringCacheCount);
         layoutGlyphCache.clear();
+
+
+		//
+		//	RKTJMP: Disregard this commented out code, it is the start
+		//			me re-implementing the existing code in a more readable 
+		//			fashion.
+		//
+		
+//		// this may be useful to understand the following code
+//		// http://ftgl.sourceforge.net/docs/html/metrics.png
+//		
+//		float lineSoFarLength = 0.0;
+//		float lineLengthWithCurrentGlyph = 0.0;
+//		int lineCharCount = 0; // need this for the cache
+//		
+//		// we have to break on whole words, so we'll remember the last valid
+//		// position we found that we could break from (this is generally
+//		// a whitespace character after a word
+//		FTUnicodeStringItr<T> breakPosition(buf);
+//		// we need to remember where the start of the current line is so
+//		// when we have to setup our cache, we'll know where to go from.
+//		FTUnicodeStringItr<T> currentLineStart(buf);
+//		
+//		for (FTUnicodeStringItr<T> iter(buf); *iter; iter++)
+//		{
+//			//
+//			// Find some details for our current glyph
+//			//
+//			
+//			// Find the width of the current glyph (BBox(char *, len))
+//			glyphBounds = currentFont->BBox(iter.getBufferFromHere(), 1);
+//			glyphWidth = glyphBounds.Upper().Xf() - glyphBounds.Lower().Xf();
+//			
+//			// advance is the distance from a glyphs origin to where the
+//			// next glyph would start, i.e. the total width of the glyph 
+//			// (this is larger than just the visible area)
+//			advance = currentFont->Advance(itr.getBufferFromHere(), 1);
+//			
+//			// find how long our line will be with this glyph
+//			lineLengthWithCurrentGlyph = lineSoFarLength + glyphWidth
+//			
+//			if((lineLengthWithCurrentGlyph > lineLength) || (*iter == '\n'))
+//			{
+//				// line length with current glyph is over the limit
+//				// or current glpyh is actually a new line, so force a break.
+//
+//				// create our cache item
+//				layoutGlyphCacheItem_t cacheItem;
+//				
+//				
+//				cacheItem.buf = stringCache + ptrdiff_t(lineStart.getBufferFromHere() - buf);
+//				cacheItem.charCount = breakCharCount;
+//				cacheItem.position = FTPoint(position.X(), position.Y(), position.Z());
+//				cacheItem.remainingWidth = remainingWidth;
+//				cacheItem.penDiff = FTPoint(0, currentFont->LineHeight() * lineSpacing);
+//
+//				
+//				if(*iter == '\n'))
+//				{
+//					// new line, so just break right here.
+//					cacheItem.position
+//					
+//				}
+//				else
+//				{
+//					// line length with current glyph was over the limit
+//					// so break on the last good break position we found
+//					if(breakPosition == currentLineStart)
+//					{
+//						// We didn't find a break position for the current line
+//						// so its still pointing to the start of the line
+//						// so we have no choice but to break mid word.
+//						// We actually want to break on the previous glyph since
+//						// this one went over the limit.
+//						
+//						
+//					}
+//					
+//				}
+//				// we want to break on whole words, so find when the last 
+//				
+//			}
+//			
+//			
+//			
+//		}
+//		
 		
 		// Scan the input for all characters that need output
 		FTUnicodeStringItr<T> prevItr(buf);
@@ -342,12 +429,23 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 				{
 					// Break on the previous character
 					breakItr = prevItr;
-					breakCharCount = charCount - 1;
-					breakWidth = prevWidth;
-					// None of the previous words will be carried to the next line
-					wordLength = 0;
-					// If the current character is a newline discard its advance
-					if(*itr == '\n') advance = 0;
+					if(*breakItr == '\n')
+					{
+						// handle \n\n
+						breakCharCount = 0;
+						breakWidth = 0;
+						wordLength = 0;
+						advance = 0;
+					}
+					else
+					{
+						breakCharCount = charCount - 1;
+						breakWidth = prevWidth;
+						// None of the previous words will be carried to the next line
+						wordLength = 0;
+						// If the current character is a newline discard its advance
+						if(*itr == '\n') advance = 0;
+					}
 				}
 				
 				float remainingWidth = lineLength - breakWidth;
@@ -359,16 +457,29 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 				// If the break character is a newline do not render it
 				if(*breakChar == '\n')
 				{
-					++breakChar; --charCount;
+					++breakChar; 
+					--charCount;
 				}
 				
-				// create 
+				// outputwrapped takes a length argument, if that lenght is
+				// -1, then it assumes you mean "the whole string"
+				// if we get more than 1 \n in a row, our breakCharCount
+				// can end up at -1, meaning we get the "whole string" outputted
+				// which ends up putting the \n glyph on screen.
+				// Check to guard against that here.
+				if(breakCharCount < 0)
+				{
+					breakCharCount = 0;
+				}
+				
+				// create our cache for this printable line
 				layoutGlyphCacheItem_t cacheItem;
 				cacheItem.buf = stringCache + ptrdiff_t(lineStart.getBufferFromHere() - buf);
 				cacheItem.charCount = breakCharCount;
 				cacheItem.position = FTPoint(position.X(), position.Y(), position.Z());
 				cacheItem.remainingWidth = remainingWidth;
 				cacheItem.penDiff = FTPoint(0, currentFont->LineHeight() * lineSpacing);
+				// save the cache item
 				layoutGlyphCache.push_back(cacheItem);
 				
 				lineStart = breakChar;
@@ -438,13 +549,22 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		for (it = layoutGlyphCache.begin(); it != layoutGlyphCache.end(); it++)
 		{
 			layoutGlyphCacheItem_t cacheItem = (*it);
-			
-			OutputWrapped((T*)cacheItem.buf, 
-						  cacheItem.charCount,
-						  cacheItem.position,
-						  renderMode,
-						  cacheItem.remainingWidth,
-						  bounds);
+
+			// If we have \n\n, some of our cache items will just be '\n'
+			// so check if thats the case, if it is, don't output but do 
+			// move the pen position just line normal. 
+			// I did try checking charCount == 0, which is what I set \n items 
+			// to but some 1 char long strings were not getting outputted...
+			// Must be some edge case in FTGL that I don't understand.
+			if(*(T*)(cacheItem.buf) != '\n')
+			{
+				OutputWrapped((T*)cacheItem.buf, 
+							  cacheItem.charCount,
+							  cacheItem.position,
+							  renderMode,
+							  cacheItem.remainingWidth,
+							  bounds);
+			}
 			pen -= cacheItem.penDiff;
 		}
 	if(bounds == NULL)

@@ -201,9 +201,18 @@ private:
 	
 	/**
 	 * The height of each line of text expressed as
-	 * a percentage of the font's line height.
+	 * a percentage of the line height. Use this to bunch your
+	 * lines up. This is mostly here for backwards compatibility.
 	 */
 	float lineSpacing;
+	
+	/**
+	 * This is the height of a line. It defaults to the fonts line
+	 * height but you can set it to an arbitary value.
+	 * Set lineHeight to -1 to reset, and use the fonts line height
+	 * instead.
+	 */
+	float lineHeight;
 	
 	
 	/**

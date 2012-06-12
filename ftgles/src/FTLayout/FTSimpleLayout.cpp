@@ -81,6 +81,7 @@ void FTSimpleLayout::Render(const wchar_t* string, const int len, FTPoint pos,
 void FTSimpleLayout::SetFont(FTFont *fontInit)
 {
     dynamic_cast<FTSimpleLayoutImpl*>(impl)->currentFont = fontInit;
+	SetLineHeight(fontInit->LineHeight());
     dynamic_cast<FTSimpleLayoutImpl*>(impl)->invalidate();
 }
 
@@ -129,6 +130,26 @@ float FTSimpleLayout::GetLineSpacing() const
     return dynamic_cast<FTSimpleLayoutImpl*>(impl)->lineSpacing;
 }
 
+void FTSimpleLayout::SetLineHeight(const float LineHeight)
+{
+	if(LineHeight == -1){
+		// use the fonts line height
+		dynamic_cast<FTSimpleLayoutImpl*>(impl)->lineHeight = dynamic_cast<FTSimpleLayoutImpl*>(impl)->currentFont->LineHeight();
+	}
+	else{
+		// use the given line height
+		dynamic_cast<FTSimpleLayoutImpl*>(impl)->lineHeight = LineHeight;
+	}
+	dynamic_cast<FTSimpleLayoutImpl*>(impl)->invalidate();
+}
+
+float FTSimpleLayout::GetLineHeight() const
+{
+	return dynamic_cast<FTSimpleLayoutImpl*>(impl)->lineHeight;	
+}
+
+
+
 
 //
 //  FTSimpleLayoutImpl
@@ -141,6 +162,7 @@ FTSimpleLayoutImpl::FTSimpleLayoutImpl()
     lineLength = 100.0f;
     alignment = FTGL::ALIGN_LEFT;
     lineSpacing = 1.0f;
+	lineHeight = -1;
     stringCache = NULL;
 	stringCacheCount = 0;
 }
@@ -478,7 +500,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 				cacheItem.charCount = breakCharCount;
 				cacheItem.position = FTPoint(position.X(), position.Y(), position.Z());
 				cacheItem.remainingWidth = remainingWidth;
-				cacheItem.penDiff = FTPoint(0, currentFont->LineHeight() * lineSpacing);
+				cacheItem.penDiff = FTPoint(0, lineHeight * lineSpacing);	
 				// save the cache item
 				layoutGlyphCache.push_back(cacheItem);
 				

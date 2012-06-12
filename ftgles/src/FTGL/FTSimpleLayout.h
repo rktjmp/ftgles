@@ -154,10 +154,17 @@ class FTGL_EXPORT FTSimpleLayout : public FTLayout
         FTGL::TextAlignment GetAlignment() const;
 
         /**
-         * Sets the line height.
+         * Sets the line spacing.
          *
          * @param LineSpacing The height of each line of text expressed as
-         *                    a percentage of the current fonts line height.
+         *                    a percentage of the line height. 
+		 *					  If you want to set a specific height, use
+		 *					  SetLineHeight(float).
+		 *					  This is really here for backwards compatibility
+		 *                    and you should consider using SetLineHeight.
+		 *					  though if you just want to make your lines "closer"
+		 *					  or "spaced out", you may find this method easier.
+		 * 
          */
         void SetLineSpacing(const float LineSpacing);
 
@@ -165,6 +172,25 @@ class FTGL_EXPORT FTSimpleLayout : public FTLayout
          * @return The line spacing.
          */
         float GetLineSpacing() const;
+
+		/**
+		 * Sets the line height, which is the height of one line in a layout.
+		 * This is expressed in GL units (refer to your projection matrix
+		 * Use this if you want your layout to fall on a baseline grid. 
+		 * This defaults to the fonts line height.
+		 * You can reset this to the font line height by passing in -1.
+		 *
+		 * @param LineSpacing The height of each line of text expressed in
+		 *                    GL units. Set to -1 to use the font line height.
+		 */
+		void SetLineHeight(const float LineHeight);
+		
+		/**
+		 * @return The line height in GL units.
+		 */
+		float GetLineHeight() const;
+
+	
 };
 
 #endif //__cplusplus

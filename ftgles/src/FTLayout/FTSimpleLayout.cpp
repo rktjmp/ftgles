@@ -539,7 +539,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 	}
 	
 	// Draw each of the glyphs in the cache.
-	if(bounds == NULL)
+	if(bounds == NULL && layoutGlyphCache.size() != 0)
 	{	
 		// bounds is NULL, so we're actually going to output the text
 		// so do our pre-render setup
@@ -567,7 +567,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 			}
 			pen -= cacheItem.penDiff;
 		}
-	if(bounds == NULL)
+	if(bounds == NULL && layoutGlyphCache.size() != 0)
 	{	
 		// we did output stuff, so do our post-render tear down.
 		currentFont->PostRender();

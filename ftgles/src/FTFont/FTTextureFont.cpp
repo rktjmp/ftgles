@@ -233,8 +233,6 @@ inline FTPoint FTTextureFontImpl::RenderI(const T* string, const int len,
                                           FTPoint position, FTPoint spacing,
                                           int renderMode)
 {
-	disableTexture2D = false;
-	disableBlend = false;
 	FTPoint tmp;
 	
 	if (preRendered)
@@ -301,7 +299,9 @@ void FTTextureFontImpl::PostRender()
 	}
 	
 	if (disableTexture2D)
+	{
 		glDisable(GL_TEXTURE_2D);
+	}
 }
 
 

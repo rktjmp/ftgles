@@ -188,10 +188,14 @@ GLvoid ftglEnd()
 	}
 	
 	if (!texCoordArrayEnabled)
+	{
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	}
 	
 	if (!colorArrayEnabled)
+	{
 		glEnableClientState(GL_COLOR_ARRAY);
+	}
 	
 	if (ftglesGlueArrays.currIndex == 0) 
 	{
@@ -230,13 +234,19 @@ GLvoid ftglEnd()
 	}
 	
 	if (!vertexArrayEnabled)
+	{
 		glDisableClientState(GL_VERTEX_ARRAY);
+	}
 	
 	if (!texCoordArrayEnabled)
+	{
 		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	}
 	
 	if (!colorArrayEnabled)
+	{
 		glDisableClientState(GL_COLOR_ARRAY);
+	}
 }
 
 

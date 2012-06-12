@@ -549,7 +549,7 @@ inline void FTSimpleLayoutImpl::WrapTextI(const T *buf, const int len,
 		for (it = layoutGlyphCache.begin(); it != layoutGlyphCache.end(); it++)
 		{
 			layoutGlyphCacheItem_t cacheItem = (*it);
-
+			
 			// If we have \n\n, some of our cache items will just be '\n'
 			// so check if thats the case, if it is, don't output but do 
 			// move the pen position just line normal. 
